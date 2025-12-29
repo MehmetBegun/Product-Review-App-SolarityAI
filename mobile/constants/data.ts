@@ -1,0 +1,211 @@
+import { Product } from '../types';
+
+export const categories = [
+  'All',
+  'Electronics',
+  'Audio',
+  'Wearables',
+  'Accessories',
+  'Gaming',
+];
+
+export const products: Product[] = [
+  {
+    id: '1',
+    name: 'Premium Wireless Headphones',
+    description: 'Experience crystal-clear audio with active noise cancellation, 40-hour battery life, and premium comfort for all-day listening. Features adaptive EQ and seamless device switching.',
+    category: 'Audio',
+    price: 349.99,
+    image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500&q=80',
+    averageRating: 4.7,
+    reviewCount: 2847,
+    reviews: [
+      {
+        id: 'r1',
+        productId: '1',
+        userName: 'Alex M.',
+        rating: 5,
+        comment: 'Best headphones I\'ve ever owned. The noise cancellation is phenomenal and they\'re incredibly comfortable for long listening sessions.',
+        createdAt: '2024-12-15',
+        helpful: 124,
+      },
+      {
+        id: 'r2',
+        productId: '1',
+        userName: 'Sarah K.',
+        rating: 4,
+        comment: 'Great sound quality and battery life. Only wish the carrying case was a bit more compact.',
+        createdAt: '2024-12-10',
+        helpful: 89,
+      },
+      {
+        id: 'r3',
+        productId: '1',
+        userName: 'Mike R.',
+        rating: 5,
+        comment: 'The adaptive EQ feature is a game-changer. Music sounds amazing regardless of what genre I\'m listening to.',
+        createdAt: '2024-12-08',
+        helpful: 56,
+      },
+    ],
+  },
+  {
+    id: '2',
+    name: 'Smart Fitness Watch Pro',
+    description: 'Track your health with advanced sensors, GPS, and 7-day battery life. Water-resistant to 50m with sleep tracking and stress monitoring features.',
+    category: 'Wearables',
+    price: 299.99,
+    image: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500&q=80',
+    averageRating: 4.5,
+    reviewCount: 1923,
+    reviews: [
+      {
+        id: 'r4',
+        productId: '2',
+        userName: 'Jennifer L.',
+        rating: 5,
+        comment: 'This watch has completely transformed my fitness routine. The accuracy of the health metrics is impressive!',
+        createdAt: '2024-12-14',
+        helpful: 203,
+      },
+      {
+        id: 'r5',
+        productId: '2',
+        userName: 'David P.',
+        rating: 4,
+        comment: 'Love the battery life and GPS accuracy. The sleep tracking has helped me improve my rest significantly.',
+        createdAt: '2024-12-12',
+        helpful: 145,
+      },
+    ],
+  },
+  {
+    id: '3',
+    name: 'Portable Bluetooth Speaker',
+    description: 'Powerful 360° sound in a compact, waterproof design. Perfect for outdoor adventures with 24-hour playtime and built-in microphone.',
+    category: 'Audio',
+    price: 129.99,
+    image: 'https://images.unsplash.com/photo-1608043152269-423dbba4e7e1?w=500&q=80',
+    averageRating: 4.8,
+    reviewCount: 3421,
+    reviews: [
+      {
+        id: 'r6',
+        productId: '3',
+        userName: 'Chris T.',
+        rating: 5,
+        comment: 'Took this camping and it survived rain, drops, and even a brief swim in the lake! Sound quality is exceptional.',
+        createdAt: '2024-12-16',
+        helpful: 312,
+      },
+      {
+        id: 'r7',
+        productId: '3',
+        userName: 'Emma W.',
+        rating: 5,
+        comment: 'Perfect size for my backpack. The bass is surprisingly powerful for such a small speaker.',
+        createdAt: '2024-12-11',
+        helpful: 178,
+      },
+    ],
+  },
+  {
+    id: '4',
+    name: 'Mechanical Gaming Keyboard',
+    description: 'RGB backlit mechanical keyboard with customizable switches, macro keys, and aircraft-grade aluminum frame. N-key rollover for competitive gaming.',
+    category: 'Gaming',
+    price: 179.99,
+    image: 'https://images.unsplash.com/photo-1511467687858-23d96c32e4ae?w=500&q=80',
+    averageRating: 4.6,
+    reviewCount: 1567,
+    reviews: [
+      {
+        id: 'r8',
+        productId: '4',
+        userName: 'Gaming Pro',
+        rating: 5,
+        comment: 'The tactile feedback is perfect. My typing speed improved and gaming feels so much more responsive.',
+        createdAt: '2024-12-13',
+        helpful: 234,
+      },
+      {
+        id: 'r9',
+        productId: '4',
+        userName: 'Tyler B.',
+        rating: 4,
+        comment: 'Great keyboard overall. The RGB software could use some improvements but the hardware is top-notch.',
+        createdAt: '2024-12-09',
+        helpful: 89,
+      },
+    ],
+  },
+  {
+    id: '5',
+    name: 'Ultra-Slim Power Bank',
+    description: '20,000mAh capacity in a credit-card thin design. USB-C PD fast charging supports laptops and phones. LED display shows remaining power.',
+    category: 'Accessories',
+    price: 79.99,
+    image: 'https://images.unsplash.com/photo-1609091839311-d5365f9ff1c5?w=500&q=80',
+    averageRating: 4.4,
+    reviewCount: 2156,
+    reviews: [
+      {
+        id: 'r10',
+        productId: '5',
+        userName: 'Travel Blogger',
+        rating: 5,
+        comment: 'Essential for long flights. Charged my MacBook and phone multiple times on a 12-hour journey.',
+        createdAt: '2024-12-17',
+        helpful: 445,
+      },
+      {
+        id: 'r11',
+        productId: '5',
+        userName: 'Nancy H.',
+        rating: 4,
+        comment: 'Incredibly slim and light. Fast charging works great with my devices.',
+        createdAt: '2024-12-07',
+        helpful: 123,
+      },
+    ],
+  },
+  {
+    id: '6',
+    name: '4K Webcam Pro',
+    description: 'Professional 4K webcam with auto-focus, low-light correction, and built-in privacy shutter. Perfect for streaming and video calls.',
+    category: 'Electronics',
+    price: 199.99,
+    image: 'https://images.unsplash.com/photo-1587826080692-f439cd0b70da?w=500&q=80',
+    averageRating: 4.3,
+    reviewCount: 892,
+    reviews: [
+      {
+        id: 'r12',
+        productId: '6',
+        userName: 'Remote Worker',
+        rating: 5,
+        comment: 'My video call quality improved dramatically. Colleagues keep complimenting how professional my setup looks now.',
+        createdAt: '2024-12-18',
+        helpful: 167,
+      },
+      {
+        id: 'r13',
+        productId: '6',
+        userName: 'Streamer Joe',
+        rating: 4,
+        comment: 'Great image quality. The auto-focus is quick and accurate. Worth the investment for content creators.',
+        createdAt: '2024-12-06',
+        helpful: 98,
+      },
+    ],
+  },
+];
+
+export const getProductById = (id: string): Product | undefined => {
+  return products.find((p) => p.id === id);
+};
+
+export const getProductsByCategory = (category: string): Product[] => {
+  if (category === 'All') return products;
+  return products.filter((p) => p.category === category);
+};
