@@ -1,5 +1,5 @@
-const BASE_URL = "http://10.11.90.214:8080"; 
-// telefonda tarayıcıda denediğin IP + :8080
+const BASE_URL = "http://192.168.1.6:8080"; 
+// senin güncel yerel IP adresin + :8080
 
 type Page<T> = {
   content: T[];
