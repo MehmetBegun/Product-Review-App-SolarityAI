@@ -1,5 +1,5 @@
-const BASE_URL = "http://192.168.1.6:8080"; 
-// senin güncel yerel IP adresin + :8080
+const BASE_URL = "https://product-review-app-solarityai-a391ad53d79a.herokuapp.com"; 
+// Heroku canlı API URL'in
 
 type Page<T> = {
   content: T[];
