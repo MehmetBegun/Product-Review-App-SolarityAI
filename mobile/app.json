@@ -21,10 +21,19 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.mehmetbegun.UrunApp"
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "877d95dc-5a55-429d-888a-65e1ef31efb3"
+      }
+    },
+    "plugins": [
+      "expo-font"
+    ]
   }
 }
