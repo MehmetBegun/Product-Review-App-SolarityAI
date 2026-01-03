@@ -4,6 +4,7 @@ import { View, Text, Image, ScrollView, StyleSheet, TouchableOpacity, ActivityIn
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { ScreenWrapper } from '../components/ScreenWrapper';
 import { Colors, Spacing, FontSize, FontWeight, BorderRadius, Shadow } from '../constants/theme';
@@ -12,7 +13,7 @@ import { ReviewCard } from '../components/ReviewCard';
 import { RatingBreakdown } from '../components/RatingBreakdown';
 import { Button } from '../components/Button';
 import { AddReviewModal } from '../components/AddReviewModal';
-import { getProduct, getReviews, postReview, ApiProduct, ApiReview } from '../services/api';
+import { getProduct, getReviews, postReview, markReviewAsHelpful, ApiProduct, ApiReview } from '../services/api';
 import { useNotifications } from '../context/NotificationContext';
 import { useToast } from '../context/ToastContext';
 import { RootStackParamList, Review } from '../types';
@@ -29,7 +30,15 @@ function imageForCategory(category?: string) {
 }
 
 function apiReviewToUiReview(productId: string, r: ApiReview): Review {
-  return { id: String(r.id ?? `r-${Date.now()}`), productId, userName: r.reviewerName ?? 'Anonymous', rating: r.rating, comment: r.comment, createdAt: r.createdAt ?? new Date().toISOString().split('T')[0], helpful: 0 };
+  return { 
+    id: String(r.id ?? `r-${Date.now()}`), 
+    productId, 
+    userName: r.reviewerName ?? 'Anonymous', 
+    rating: r.rating, 
+    comment: r.comment, 
+    createdAt: r.createdAt ?? new Date().toISOString().split('T')[0], 
+    helpful: r.helpfulCount ?? 0 
+  };
 }
 
 export const ProductDetailsScreen: React.FC = () => {
@@ -45,6 +54,21 @@ export const ProductDetailsScreen: React.FC = () => {
   const [product, setProduct] = useState<ApiProduct | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+  const [helpfulReviews, setHelpfulReviews] = useState<string[]>([]);
+
+  useEffect(() => {
+    // Load helpful reviews from storage
+    (async () => {
+      try {
+        const stored = await AsyncStorage.getItem('helpful_reviews');
+        if (stored) {
+          setHelpfulReviews(JSON.parse(stored));
+        }
+      } catch (e) {
+        console.error('Failed to load helpful reviews', e);
+      }
+    })();
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -79,6 +103,32 @@ export const ProductDetailsScreen: React.FC = () => {
     }
   };
 
+  const handleHelpfulPress = async (reviewId: string) => {
+    if (helpfulReviews.includes(reviewId)) return;
+
+    try {
+      // Optimistic update
+      setReviews(prev => prev.map(r => 
+        r.id === reviewId ? { ...r, helpful: r.helpful + 1 } : r
+      ));
+      
+      // Update local state and storage
+      const newHelpfulReviews = [...helpfulReviews, reviewId];
+      setHelpfulReviews(newHelpfulReviews);
+      await AsyncStorage.setItem('helpful_reviews', JSON.stringify(newHelpfulReviews));
+
+      await markReviewAsHelpful(reviewId);
+    } catch (e) {
+      // Revert on error
+      setReviews(prev => prev.map(r => 
+        r.id === reviewId ? { ...r, helpful: r.helpful - 1 } : r
+      ));
+      // Revert local state
+      setHelpfulReviews(prev => prev.filter(id => id !== reviewId));
+      showToast({ type: 'error', title: 'Error', message: 'Could not mark as helpful.' });
+    }
+  };
+
   if (loading) return <ScreenWrapper><View style={styles.center}><ActivityIndicator size="large" color={colors.primary} /><Text style={{ color: colors.mutedForeground }}>Loading...</Text></View></ScreenWrapper>;
   if (error) return <ScreenWrapper><TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}><Ionicons name="arrow-back" size={20} color={colors.foreground} /><Text style={{ color: colors.foreground }}>Back</Text></TouchableOpacity><Text style={{ color: colors.destructive, padding: Spacing.lg }}>{error}</Text></ScreenWrapper>;
   if (!product) return <ScreenWrapper><Text style={{ padding: Spacing.lg, color: colors.foreground }}>Product not found</Text></ScreenWrapper>;
@@ -95,7 +145,7 @@ export const ProductDetailsScreen: React.FC = () => {
           <View style={styles.section}><Text style={[styles.sectionTitle, { color: colors.foreground }]}>Rating Breakdown</Text><RatingBreakdown reviews={reviews} /></View>
           <View style={styles.section}>
             <View style={styles.reviewsHeader}><Text style={[styles.sectionTitle, { color: colors.foreground }]}>Reviews</Text><Button onPress={() => setIsReviewModalOpen(true)}>Add Review</Button></View>
-            {reviews.length === 0 ? <Text style={{ color: colors.mutedForeground, marginTop: 8 }}>No reviews yet.</Text> : <View style={{ marginTop: Spacing.md, gap: Spacing.md }}>{reviews.map((r) => <ReviewCard key={r.id} review={r} />)}</View>}
+            {reviews.length === 0 ? <Text style={{ color: colors.mutedForeground, marginTop: 8 }}>No reviews yet.</Text> : <View style={{ marginTop: Spacing.md, gap: Spacing.md }}>{reviews.map((r) => <ReviewCard key={r.id} review={r} onHelpfulPress={handleHelpfulPress} isHelpful={helpfulReviews.includes(r.id)} />)}</View>}
           </View>
         </View>
       </ScrollView>

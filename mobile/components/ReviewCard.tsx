@@ -15,9 +15,11 @@ import { Colors, Spacing, FontSize, BorderRadius, FontWeight } from '../constant
 
 interface ReviewCardProps {
   review: Review;
+  onHelpfulPress?: (reviewId: string) => void;
+  isHelpful?: boolean; // Kullanıcı bu yoruma daha önce helpful demiş mi?
 }
 
-export const ReviewCard: React.FC<ReviewCardProps> = ({ review }) => {
+export const ReviewCard: React.FC<ReviewCardProps> = ({ review, onHelpfulPress, isHelpful = false }) => {
   const colors = Colors.light;
 
   const formattedDate = new Date(review.createdAt).toLocaleDateString('en-US', {
@@ -53,9 +55,21 @@ export const ReviewCard: React.FC<ReviewCardProps> = ({ review }) => {
       </Text>
 
       {/* Footer */}
-      <TouchableOpacity style={styles.helpfulButton} activeOpacity={0.7}>
-        <Ionicons name="thumbs-up-outline" size={16} color={colors.mutedForeground} />
-        <Text style={[styles.helpfulText, { color: colors.mutedForeground }]}>
+      <TouchableOpacity 
+        style={[styles.helpfulButton, isHelpful && styles.helpfulButtonActive]} 
+        activeOpacity={0.7}
+        onPress={() => !isHelpful && onHelpfulPress && onHelpfulPress(review.id)}
+        disabled={isHelpful}
+      >
+        <Ionicons 
+          name={isHelpful ? "thumbs-up" : "thumbs-up-outline"} 
+          size={16} 
+          color={isHelpful ? colors.primary : colors.mutedForeground} 
+        />
+        <Text style={[
+          styles.helpfulText, 
+          { color: isHelpful ? colors.primary : colors.mutedForeground }
+        ]}>
           Helpful ({review.helpful})
         </Text>
       </TouchableOpacity>
@@ -104,6 +118,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.sm,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: BorderRadius.md,
+  },
+  helpfulButtonActive: {
+    backgroundColor: 'rgba(0, 0, 0, 0.05)', // Hafif bir arka plan
   },
   helpfulText: {
     fontSize: FontSize.sm,

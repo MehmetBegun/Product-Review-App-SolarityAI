@@ -1,5 +1,5 @@
 const BASE_URL = "https://product-review-app-solarityai-a391ad53d79a.herokuapp.com"; 
-// Heroku canlı API URL'in
+// const BASE_URL = "http://192.168.1.6:8080";
 
 type Page<T> = {
   content: T[];
@@ -24,6 +24,7 @@ export type ApiReview = {
   reviewerName?: string;
   rating: number;
   comment: string;
+  helpfulCount?: number;
   createdAt?: string;
 };
 
@@ -58,5 +59,11 @@ export function postReview(productId: number | string, body: ApiReview) {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
+  });
+}
+
+export function markReviewAsHelpful(reviewId: number | string) {
+  return request<ApiReview>(`${BASE_URL}/api/products/reviews/${reviewId}/helpful`, {
+    method: "PUT",
   });
 }
