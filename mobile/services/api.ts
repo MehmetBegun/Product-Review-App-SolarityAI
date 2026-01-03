@@ -1,5 +1,4 @@
 const BASE_URL = "http://192.168.1.6:8080"; 
-// senin güncel yerel IP adresin + :8080
 
 type Page<T> = {
   content: T[];
