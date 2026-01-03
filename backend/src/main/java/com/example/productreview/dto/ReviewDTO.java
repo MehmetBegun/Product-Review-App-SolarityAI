@@ -26,6 +26,8 @@ public class ReviewDTO {
     @Max(value = 5, message = "Rating must be at most 5")
     private Integer rating;
 
+    private Integer helpfulCount; // Yeni alan
+
     private LocalDateTime createdAt;
     private Long productId;
 }

@@ -20,6 +20,7 @@ public class Review {
     private String reviewerName;
     private String comment;
     private Integer rating;
+    private Integer helpfulCount = 0; // Yeni alan
     private LocalDateTime createdAt;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -29,5 +30,8 @@ public class Review {
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
+        if (helpfulCount == null) {
+            helpfulCount = 0;
+        }
     }
 }

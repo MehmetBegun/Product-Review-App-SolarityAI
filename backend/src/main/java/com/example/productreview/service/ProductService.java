@@ -49,12 +49,28 @@ public class ProductService {
         review.setReviewerName(reviewDTO.getReviewerName());
         review.setComment(reviewDTO.getComment());
         review.setRating(reviewDTO.getRating());
+        review.setHelpfulCount(0);
         review.setProduct(product);
 
         Review savedReview = reviewRepository.save(review);
 
         // Update product statistics
         updateProductStats(product);
+
+        return convertToReviewDTO(savedReview);
+    }
+
+    @Transactional
+    public ReviewDTO markReviewAsHelpful(Long reviewId) {
+        Review review = reviewRepository.findById(reviewId)
+                .orElseThrow(() -> new RuntimeException("Review not found"));
+
+        if (review.getHelpfulCount() == null) {
+            review.setHelpfulCount(0);
+        }
+        
+        review.setHelpfulCount(review.getHelpfulCount() + 1);
+        Review savedReview = reviewRepository.save(review);
 
         return convertToReviewDTO(savedReview);
     }
@@ -78,6 +94,7 @@ public class ProductService {
                 review.getReviewerName(),
                 review.getComment(),
                 review.getRating(),
+                review.getHelpfulCount() != null ? review.getHelpfulCount() : 0,
                 review.getCreatedAt(),
                 review.getProduct().getId()
         );

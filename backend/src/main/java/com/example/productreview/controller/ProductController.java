@@ -38,4 +38,9 @@ public class ProductController {
     public ReviewDTO addReview(@PathVariable Long id, @Valid @RequestBody ReviewDTO reviewDTO) {
         return productService.addReview(id, reviewDTO);
     }
+
+    @PutMapping("/reviews/{reviewId}/helpful")
+    public ReviewDTO markReviewAsHelpful(@PathVariable Long reviewId) {
+        return productService.markReviewAsHelpful(reviewId);
+    }
 }
