@@ -18,6 +18,7 @@ export interface Product {
   averageRating: number;
   reviewCount: number;
   reviews: Review[];
+  ratingBreakdown?: Record<number, number>;
 }
 
 export type RootStackParamList = {
