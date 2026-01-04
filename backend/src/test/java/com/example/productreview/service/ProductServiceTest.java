@@ -16,6 +16,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Optional;
 
@@ -46,10 +47,11 @@ public class ProductServiceTest {
         product.setDescription("Description");
         product.setCategory("Category");
         product.setPrice(100.0);
+        product.setImageUrl("http://example.com/image.jpg");
         product.setAverageRating(0.0);
         product.setReviewCount(0);
 
-        productDTO = new ProductDTO(1L, "Test Product", "Description", "Category", 100.0, 0.0, 0);
+        productDTO = new ProductDTO(1L, "Test Product", "Description", "Category", 100.0, "http://example.com/image.jpg", 0.0, 0, null);
     }
 
     @Test
@@ -58,7 +60,8 @@ public class ProductServiceTest {
         Page<Product> productPage = new PageImpl<>(Arrays.asList(product));
         when(productRepository.findAll(pageable)).thenReturn(productPage);
 
-        Page<ProductDTO> result = productService.getAllProducts(pageable);
+        // Updated to pass null as category
+        Page<ProductDTO> result = productService.getAllProducts(null, pageable);
 
         assertNotNull(result);
         assertEquals(1, result.getContent().size());
@@ -69,6 +72,7 @@ public class ProductServiceTest {
     @Test
     void getProductDTOById_ShouldReturnDTO() {
         when(productRepository.findById(1L)).thenReturn(Optional.of(product));
+        when(reviewRepository.findRatingCountsByProductId(1L)).thenReturn(new ArrayList<>());
 
         ProductDTO result = productService.getProductDTOById(1L);
 
