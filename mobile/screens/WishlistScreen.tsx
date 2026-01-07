@@ -190,10 +190,10 @@ export const WishlistScreen: React.FC = () => {
     </View>
   );
 
-  // FIX: Combined header (web maxWidth için)
+  // Combined header (web maxWidth için)
   const renderListHeader = () => (
     <View>
-      {/* Header - FlatList içine taşındı */}
+      {/* Header */}
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
         <View style={styles.headerLeft}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
@@ -209,9 +209,15 @@ export const WishlistScreen: React.FC = () => {
           </View>
         </View>
 
+        {/* FIX: Clear all button - styled */}
         {wishlist.length > 0 && (
-          <TouchableOpacity onPress={clearWishlist} activeOpacity={0.7}>
-            <Text style={[styles.clearAll, { color: colors.destructive }]}>Clear all</Text>
+          <TouchableOpacity 
+            onPress={clearWishlist} 
+            activeOpacity={0.8}
+            style={[styles.clearAllButton, { backgroundColor: colors.destructive }]}
+          >
+            <Ionicons name="trash-outline" size={16} color="#fff" />
+            <Text style={styles.clearAllText}>Clear all</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -266,7 +272,19 @@ const styles = StyleSheet.create({
     fontSize: FontSize.xs,
     marginTop: 2,
   },
-  clearAll: {
+  
+  // FIX: Clear all button - yuvarlak kırmızı buton
+  clearAllButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.md,
+    ...Shadow.soft,
+  },
+  clearAllText: {
+    color: '#fff',
     fontSize: FontSize.sm,
     fontWeight: FontWeight.semibold,
   },
