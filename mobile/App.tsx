@@ -9,6 +9,7 @@ import { ProductDetailsScreen } from './screens/ProductDetailsScreen';
 import { NotificationsScreen } from './screens/NotificationsScreen';
 import { NotificationDetailScreen } from './screens/NotificationDetailScreen';
 import { WishlistScreen } from './screens/WishlistScreen';
+import { AIAssistantScreen } from './screens/AIAssistantScreen';  // ← YENİ SATIR
 import { NotificationProvider } from './context/NotificationContext';
 import { WishlistProvider } from './context/WishlistContext';
 import { ToastProvider } from './context/ToastContext';
@@ -47,6 +48,12 @@ export default function App() {
                   <Stack.Screen 
                     name="Wishlist" 
                     component={WishlistScreen}
+                    options={{ animation: 'slide_from_right' }}
+                  />
+                  {/* AI Assistant Screen - YENİ! */}
+                  <Stack.Screen 
+                    name="AIAssistant" 
+                    component={AIAssistantScreen}
                     options={{ animation: 'slide_from_right' }}
                   />
                 </Stack.Navigator>

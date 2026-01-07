@@ -46,6 +46,23 @@
 			<artifactId>spring-boot-starter-test</artifactId>
 			<scope>test</scope>
 		</dependency>
+		
+		<!-- ✨ OpenAI Spring Boot Starter for ChatGPT Integration -->
+		<dependency>
+			<groupId>io.github.sashirestela</groupId>
+			<artifactId>simple-openai</artifactId>
+			<version>3.8.1</version>
+		</dependency>
+		
+		<!-- Caffeine Cache for AI Summary Caching -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-cache</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>com.github.ben-manes.caffeine</groupId>
+			<artifactId>caffeine</artifactId>
+		</dependency>
 	</dependencies>
 
 	<build>

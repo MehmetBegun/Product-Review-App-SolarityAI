@@ -12,6 +12,11 @@ export type RootStackParamList = {
     notificationId: string;
   };
   Wishlist: undefined;
+  AIAssistant: {
+    productName: string;
+    productId: string;
+    reviews: Review[];
+  };
 };
 
 export interface Review {

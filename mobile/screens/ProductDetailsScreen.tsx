@@ -1,537 +1,476 @@
-// React Native ProductDetailsScreen
-// Rating breakdown click-to-filter + helpful + review submit refresh + robust image fallback + Pagination + Server-side Filtering
-import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
+// ProductDetailsScreen.tsx
+// Product details with reviews, ratings, and AI Assistant navigation
+
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
   Image,
-  ScrollView,
   StyleSheet,
+  ScrollView,
   TouchableOpacity,
   ActivityIndicator,
 } from 'react-native';
-import { useNavigation, useRoute, RouteProp, useFocusEffect } from '@react-navigation/native';
+import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { ScreenWrapper } from '../components/ScreenWrapper';
 import { StarRating } from '../components/StarRating';
-import { ReviewCard } from '../components/ReviewCard';
 import { RatingBreakdown } from '../components/RatingBreakdown';
+import { ReviewCard } from '../components/ReviewCard';
 import { Button } from '../components/Button';
 import { AddReviewModal } from '../components/AddReviewModal';
 
-import { Colors, Spacing, FontSize, FontWeight, BorderRadius, Shadow } from '../constants/theme';
+import { useWishlist } from '../context/WishlistContext';
+import { useNotifications } from '../context/NotificationContext';
 import { useTheme } from '../context/ThemeContext';
+import { ToastProvider, useToast } from '../context/ToastContext';
+
 import { RootStackParamList, Review } from '../types';
-import {
-  getProduct,
-  getReviews,
-  postReview,
-  markReviewAsHelpful,
-  ApiProduct,
-  ApiReview,
-} from '../services/api';
-import { useToast } from '../context/ToastContext';
+import { Spacing, FontSize, FontWeight, BorderRadius, Shadow } from '../constants/theme';
+import { getProduct, postReview, getReviews } from '../services/api';
 
-type RouteT = RouteProp<RootStackParamList, 'ProductDetails'>;
+type RouteType = RouteProp<RootStackParamList, 'ProductDetails'>;
 
-function apiReviewToUiReview(productId: string, r: ApiReview): Review {
-  return {
-    id: String((r as any).id ?? `r-${Date.now()}`),
-    productId,
-    userName: (r as any).reviewerName ?? 'Anonymous',
-    rating: (r as any).rating ?? 0,
-    comment: (r as any).comment ?? '',
-    createdAt: (r as any).createdAt ?? new Date().toISOString(),
-    helpful: (r as any).helpfulCount ?? 0,
-  } as Review;
-}
-
-function pickImageUri(p: any): string | null {
-  if (!p) return null;
-
-  const candidates = [
-    p?.imageUrl,
-    p?.imageURL,
-    p?.imageUri,
-    p?.imageURI,
-    p?.image,
-    p?.img,
-    p?.thumbnailUrl,
-    p?.thumbnail,
-    p?.photoUrl,
-    p?.photo,
-    p?.pictureUrl,
-    p?.picture,
-    p?.image_url,
-    p?.image_uri,
-    p?.image_path,
-    p?.thumbnail_url,
-    p?.photo_url,
-  ];
-
-  for (const c of candidates) {
-    if (typeof c === 'string' && c.trim().length > 0) return c.trim();
-  }
-
-  const nested =
-    p?.image?.url ||
-    p?.image?.uri ||
-    p?.thumbnail?.url ||
-    p?.photo?.url ||
-    p?.picture?.url;
-
-  if (typeof nested === 'string' && nested.trim().length > 0) return nested.trim();
-
-  const firstFromArray =
-    (Array.isArray(p?.images) && (p.images[0]?.url || p.images[0]?.uri || p.images[0])) ||
-    (Array.isArray(p?.photos) && (p.photos[0]?.url || p.photos[0]?.uri || p.photos[0]));
-
-  if (typeof firstFromArray === 'string' && firstFromArray.trim().length > 0) return firstFromArray.trim();
-  if (typeof firstFromArray === 'object') {
-    const v = firstFromArray?.url || firstFromArray?.uri;
-    if (typeof v === 'string' && v.trim().length > 0) return v.trim();
-  }
-
-  return null;
-}
-
-function normalizeImageUri(uri: string | null): string | null {
-  if (!uri) return null;
-  const u = uri.trim();
-  if (!u) return null;
-
-  if (u.startsWith('http://') || u.startsWith('https://')) return u;
-  if (u.startsWith('//')) return `https:${u}`;
-
-  return u;
-}
-
-export const ProductDetailsScreen: React.FC = () => {
+const ProductDetailsContent: React.FC = () => {
+  const route = useRoute<RouteType>();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const route = useRoute<RouteT>();
-  const { showToast } = useToast();
   const { colors } = useTheme();
+  const { showToast } = useToast();
+  const { isInWishlist, toggleWishlist } = useWishlist();
+  const { addNotification } = useNotifications();
 
-  const productId = String((route.params as any)?.productId ?? (route.params as any)?.id ?? '');
-  const routeImageUrl = String((route.params as any)?.imageUrl ?? '');
-  const routeName = String((route.params as any)?.name ?? '');
-
-  const [product, setProduct] = useState<ApiProduct | null>(null);
-  const [reviews, setReviews] = useState<Review[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  // Pagination states
-  const [page, setPage] = useState(0);
-  const [hasMore, setHasMore] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-
-  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
-  const [helpfulReviews, setHelpfulReviews] = useState<string[]>([]);
-  const [selectedRating, setSelectedRating] = useState<number | null>(null);
-  const [imageFailed, setImageFailed] = useState(false);
-
-  // Refs for scrolling
   const scrollViewRef = useRef<ScrollView>(null);
   const reviewsSectionRef = useRef<View>(null);
 
+  const productId = route.params?.productId ?? '';
+  const routeImageUrl = route.params?.imageUrl;
+  const routeName = route.params?.name;
+
+  const [product, setProduct] = useState<any>(null);
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+  const [helpfulReviews, setHelpfulReviews] = useState<string[]>([]);
+  const [selectedRating, setSelectedRating] = useState<number | null>(null);
+
+  const inWishlist = isInWishlist(productId);
+
   useEffect(() => {
-    (async () => {
-      try {
-        const stored = await AsyncStorage.getItem('helpful_reviews');
-        if (stored) setHelpfulReviews(JSON.parse(stored));
-      } catch {}
-    })();
-  }, []);
+    fetchProduct();
+  }, [productId]);
 
-  const persistHelpful = useCallback(async (ids: string[]) => {
+  const fetchProduct = async () => {
     try {
-      await AsyncStorage.setItem('helpful_reviews', JSON.stringify(ids));
-    } catch {}
-  }, []);
-
-  // Fetch product and initial reviews (with optional rating filter)
-  const fetchProductAndReviews = useCallback(async (resetReviews = false) => {
-    try {
-      if (resetReviews) {
-        setLoading(true);
-        setReviews([]);
-      }
+      setLoading(true);
+      const data = await getProduct(productId);
+      setProduct(data);
       
-      setError(null);
-      setPage(0);
-      setHasMore(true);
-
-      // If we already have product, don't fetch it again unless necessary
-      const productPromise = product ? Promise.resolve(product) : getProduct(productId);
-      
-      const [p, revPage] = await Promise.all([
-        productPromise,
-        getReviews(productId, { page: 0, size: 5, rating: selectedRating })
-      ]);
-      
-      setProduct(p);
-      
-      const newReviews = (revPage.content ?? []).map((r) => apiReviewToUiReview(productId, r));
-      setReviews(newReviews);
-      setHasMore(!revPage.last);
-      
-    } catch (e: any) {
-      setError(e?.message ?? 'API error');
+      // Fetch reviews separately
+      const reviewsData = await getReviews(productId);
+      setReviews(reviewsData.content || []);
+    } catch (error: any) {
+      showToast({
+        type: 'error',
+        title: 'Error',
+        message: error.message || 'Failed to load product',
+      });
     } finally {
       setLoading(false);
     }
-  }, [productId, selectedRating, product]);
+  };
 
-  // Initial load
-  useEffect(() => {
-    fetchProductAndReviews(true);
-  }, [productId]); // Only on mount or productId change
-
-  // When rating filter changes, re-fetch reviews
-  useEffect(() => {
-    // Skip initial mount to avoid double fetch
-    if (!loading) {
-      fetchProductAndReviews(false);
-    }
-  }, [selectedRating]);
-
-  const loadMoreReviews = async () => {
-    if (!hasMore || loadingMore) return;
-    
+  const handleSubmitReview = async (reviewData: {
+    userName: string;
+    rating: number;
+    comment: string;
+  }) => {
     try {
-      setLoadingMore(true);
-      const nextPage = page + 1;
-      const revPage = await getReviews(productId, { page: nextPage, size: 5, rating: selectedRating });
+      const newReview = await postReview(productId, {
+        reviewerName: reviewData.userName,
+        rating: reviewData.rating,
+        comment: reviewData.comment,
+      });
       
-      const newReviews = (revPage.content ?? []).map((r) => apiReviewToUiReview(productId, r));
-      setReviews(prev => [...prev, ...newReviews]);
+      setReviews(prev => [newReview as any, ...prev]);
       
-      setPage(nextPage);
-      setHasMore(!revPage.last);
-    } catch (e) {
-      // silent fail or toast
-    } finally {
-      setLoadingMore(false);
-    }
-  };
-
-  const avgRating = useMemo(() => {
-    if (product?.averageRating) return product.averageRating;
-    if (!reviews.length) return 0;
-    return reviews.reduce((acc, r) => acc + (r.rating ?? 0), 0) / reviews.length;
-  }, [reviews, product]);
-
-  const imageUri = useMemo(() => {
-    const fromProduct = product ? pickImageUri(product) : null;
-    const fallback = routeImageUrl && routeImageUrl.trim().length > 0 ? routeImageUrl.trim() : null;
-    return normalizeImageUri(fromProduct ?? fallback);
-  }, [product, routeImageUrl]);
-
-  useEffect(() => {
-    setImageFailed(false);
-  }, [imageUri]);
-
-  const handleHelpfulPress = async (reviewId: string) => {
-    const isCurrentlyHelpful = helpfulReviews.includes(reviewId);
-    
-    if (isCurrentlyHelpful) {
-      // Remove helpful - toggle off
-      setReviews((prev) =>
-        prev.map((r) => (r.id === reviewId ? { ...r, helpful: Math.max(0, (r.helpful ?? 0) - 1) } : r))
-      );
-      
-      const next = helpfulReviews.filter(id => id !== reviewId);
-      setHelpfulReviews(next);
-      persistHelpful(next);
-    } else {
-      // Add helpful - toggle on
-      setReviews((prev) =>
-        prev.map((r) => (r.id === reviewId ? { ...r, helpful: (r.helpful ?? 0) + 1 } : r))
-      );
-
-      const next = [...helpfulReviews, reviewId];
-      setHelpfulReviews(next);
-      persistHelpful(next);
-
-      try {
-        await (markReviewAsHelpful as any)(reviewId);
-      } catch {}
-    }
-  };
-
-  const scrollToReviews = () => {
-    reviewsSectionRef.current?.measureLayout(
-      scrollViewRef.current as any,
-      (x, y) => {
-        scrollViewRef.current?.scrollTo({ y: y - 20, animated: true });
-      },
-      () => {
-        // Fallback if measureLayout fails
-        console.log('measureLayout failed');
-      }
-    );
-  };
-
-  const handleAddReview = async (payload: { userName: string; rating: number; comment: string }) => {
-    try {
-      await postReview(productId, {
-        reviewerName: payload.userName,
-        rating: payload.rating,
-        comment: payload.comment,
+      showToast({
+        type: 'success',
+        title: 'Review submitted!',
+        message: 'Thank you for your feedback.',
       });
 
-      showToast({ type: 'success', title: 'Review added', message: 'Thanks for your feedback!' });
+      addNotification({
+        type: 'review',
+        title: 'Review Posted',
+        body: `Your review for ${displayName} has been published.`,
+        data: { productId, productName: displayName },
+      });
 
-      // Refresh list
-      setSelectedRating(null); // Reset filter to show new review
-      await fetchProductAndReviews(false);
-      setIsReviewModalOpen(false);
-    } catch (e: any) {
+      await fetchProduct();
+    } catch (error: any) {
       showToast({
         type: 'error',
-        title: 'Submission failed',
-        message: e?.message ?? 'Could not submit review.',
+        title: 'Error',
+        message: error.message || 'Failed to submit review',
       });
     }
   };
 
-  if (loading && !product) {
+  const handleHelpfulPress = useCallback((reviewId: string) => {
+    setHelpfulReviews(prev =>
+      prev.includes(reviewId)
+        ? prev.filter(id => id !== reviewId)
+        : [...prev, reviewId]
+    );
+  }, []);
+
+  const handleWishlistToggle = () => {
+    toggleWishlist({
+      id: productId,
+      name: product?.name || 'Product',
+      price: product?.price,
+      imageUrl: product?.imageUrl || routeImageUrl,
+      category: product?.category,
+      averageRating: product?.averageRating,
+    });
+
+    showToast({
+      type: inWishlist ? 'info' : 'success',
+      title: inWishlist ? 'Removed from wishlist' : 'Added to wishlist',
+      message: inWishlist
+        ? `${product?.name || 'Product'} removed from your wishlist`
+        : `${product?.name || 'Product'} added to your wishlist`,
+    });
+  };
+
+  const handleAIAssistant = () => {
+    navigation.navigate('AIAssistant' as any, {
+      productName: displayName,
+      productId: productId,
+      reviews: reviews,
+    });
+  };
+
+  const filteredReviews = useMemo(() => {
+    if (selectedRating === null) return reviews;
+    return reviews.filter(r => Math.floor(r.rating) === selectedRating);
+  }, [reviews, selectedRating]);
+
+  if (loading) {
     return (
-      <ScreenWrapper>
-        <View style={styles.center}>
-          <ActivityIndicator />
-          <Text style={{ color: colors.mutedForeground }}>Loading...</Text>
+      <ScreenWrapper backgroundColor={colors.background}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
         </View>
       </ScreenWrapper>
     );
   }
 
-  if (error && !product) {
+  if (!product) {
     return (
-      <ScreenWrapper>
-        <View style={styles.center}>
-          <Text style={{ color: colors.destructive, fontWeight: FontWeight.semibold }}>
-            {error}
+      <ScreenWrapper backgroundColor={colors.background}>
+        <View style={styles.errorContainer}>
+          <Ionicons name="alert-circle-outline" size={64} color={colors.mutedForeground} />
+          <Text style={[styles.errorText, { color: colors.foreground }]}>
+            Product not found
           </Text>
+          <Button onPress={() => navigation.goBack()}>Go Back</Button>
         </View>
       </ScreenWrapper>
     );
   }
 
-  const displayName = (product as any)?.name ?? routeName ?? 'Product';
+  const displayName = product.name ?? routeName ?? 'Product';
+  const imageUrl = product.imageUrl || routeImageUrl;
 
   return (
     <ScreenWrapper backgroundColor={colors.background}>
       <ScrollView ref={scrollViewRef} showsVerticalScrollIndicator={false}>
+        {/* Back Button */}
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
           <Ionicons name="chevron-back" size={20} color={colors.foreground} />
           <Text style={[styles.backButtonText, { color: colors.foreground }]}>Back</Text>
         </TouchableOpacity>
 
-        <View style={[styles.imageContainer, { backgroundColor: colors.secondary }]}>
-          {imageUri && !imageFailed ? (
-            <>
-              <Image
-                source={{ uri: imageUri }}
-                style={styles.image}
-                resizeMode="cover"
-                onError={(e) => {
-                  setImageFailed(true);
-                }}
+        {/* Product Image */}
+        {imageUrl && (
+          <View style={styles.imageContainer}>
+            <Image source={{ uri: imageUrl }} style={styles.image} resizeMode="cover" />
+            
+            {/* Wishlist Button */}
+            <TouchableOpacity
+              onPress={handleWishlistToggle}
+              style={[styles.wishlistButton, {
+                backgroundColor: inWishlist ? colors.primary : 'rgba(255,255,255,0.9)',
+              }]}
+            >
+              <Ionicons
+                name={inWishlist ? 'heart' : 'heart-outline'}
+                size={24}
+                color={inWishlist ? '#fff' : colors.foreground}
               />
-              <LinearGradient
-                colors={['transparent', 'rgba(0,0,0,0.65)']}
-                style={styles.imageOverlay}
-              />
-              <Text style={styles.imageText}>{displayName}</Text>
-            </>
-          ) : (
-            <View style={styles.noImage}>
-              <Ionicons name="image-outline" size={28} color={colors.mutedForeground} />
-              <Text style={{ marginTop: 8, color: colors.mutedForeground, fontSize: FontSize.sm }}>
-                No image available
-              </Text>
-            </View>
-          )}
-        </View>
-
-        <View style={styles.content}>
-          <Text style={[styles.title, { color: colors.foreground }]}>{displayName}</Text>
-
-          <View style={styles.ratingRow}>
-            <StarRating rating={avgRating} size="md" />
-            <TouchableOpacity onPress={scrollToReviews} activeOpacity={0.7}>
-              <Text style={[styles.ratingMeta, { color: colors.mutedForeground }]}>
-                {avgRating.toFixed(1)} ({product?.reviewCount ?? reviews.length} reviews)
-              </Text>
             </TouchableOpacity>
           </View>
+        )}
 
-          {!!(product as any)?.description && (
-            <Text style={[styles.description, { color: colors.mutedForeground }]}>
-              {(product as any)?.description}
+        {/* Product Info */}
+        <View style={styles.infoSection}>
+          {product.category && (
+            <Text style={[styles.category, { color: colors.mutedForeground }]}>
+              {product.category}
+            </Text>
+          )}
+          
+          <Text style={[styles.productName, { color: colors.foreground }]}>
+            {displayName}
+          </Text>
+
+          {product.price !== undefined && (
+            <Text style={[styles.price, { color: colors.primary }]}>
+              ${product.price.toFixed(2)}
             </Text>
           )}
 
-          {/* Rating Breakdown */}
-          <View style={styles.section}>
-            <View style={styles.sectionHeaderRow}>
-              <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Rating Breakdown</Text>
-
-              {selectedRating !== null && (
-                <TouchableOpacity
-                  onPress={() => setSelectedRating(null)}
-                  style={[styles.clearPill, { backgroundColor: colors.secondary }]}
-                  activeOpacity={0.85}
-                >
-                  <Ionicons name="close" size={14} color={colors.mutedForeground} />
-                  <Text style={{ color: colors.mutedForeground, fontSize: FontSize.xs }}>Clear</Text>
-                </TouchableOpacity>
-              )}
+          {/* Rating Summary */}
+          {product.averageRating !== undefined && (
+            <View style={styles.ratingRow}>
+              <StarRating rating={product.averageRating} size="md" />
+              <Text style={[styles.ratingText, { color: colors.foreground }]}>
+                {product.averageRating.toFixed(1)}
+              </Text>
+              <Text style={[styles.reviewCountText, { color: colors.mutedForeground }]}>
+                ({product.reviewCount || 0} reviews)
+              </Text>
             </View>
+          )}
 
+          {/* Description */}
+          {product.description && (
+            <Text style={[styles.description, { color: colors.foreground }]}>
+              {product.description}
+            </Text>
+          )}
+        </View>
+
+        {/* Rating Breakdown */}
+        {reviews.length > 0 && (
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+              Rating Breakdown
+            </Text>
             <RatingBreakdown
-              breakdown={(product as any)?.ratingBreakdown}
-              totalCount={(product as any)?.reviewCount}
               reviews={reviews}
               selectedRating={selectedRating}
               onSelectRating={setSelectedRating}
             />
           </View>
+        )}
 
-          {/* Reviews */}
-          <View ref={reviewsSectionRef} style={styles.section} collapsable={false}>
-            <View style={styles.reviewsHeader}>
-              <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-                Reviews {selectedRating !== null ? `(${selectedRating}★)` : ''}
-              </Text>
+        {/* Reviews Section */}
+        <View ref={reviewsSectionRef} style={styles.section} collapsable={false}>
+          <View style={styles.reviewsHeader}>
+            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+              Reviews {selectedRating !== null ? `(${selectedRating}★)` : ''}
+            </Text>
 
+            <View style={styles.reviewActions}>
+              {/* AI Assistant Button */}
+              <TouchableOpacity
+                onPress={handleAIAssistant}
+                style={styles.aiChatButton}
+                activeOpacity={0.8}
+              >
+                <LinearGradient
+                  colors={['#8B5CF6', '#6366F1']}
+                  style={styles.aiChatGradient}
+                >
+                  <Ionicons name="chatbubbles" size={20} color="#fff" />
+                </LinearGradient>
+              </TouchableOpacity>
+
+              {/* Add Review Button */}
               <Button variant="premium" onPress={() => setIsReviewModalOpen(true)}>
                 Add Review
               </Button>
             </View>
-
-            {reviews.length === 0 ? (
-              <Text style={{ color: colors.mutedForeground, marginTop: 8 }}>No reviews found.</Text>
-            ) : (
-              <View style={{ marginTop: Spacing.md, gap: Spacing.md }}>
-                {reviews.map((r) => (
-                  <ReviewCard
-                    key={r.id}
-                    review={r}
-                    onHelpfulPress={handleHelpfulPress}
-                    isHelpful={helpfulReviews.includes(r.id)}
-                  />
-                ))}
-              </View>
-            )}
-            
-            {/* Load More Button */}
-            {hasMore && (
-              <TouchableOpacity 
-                style={styles.loadMoreButton} 
-                onPress={loadMoreReviews}
-                disabled={loadingMore}
-              >
-                {loadingMore ? (
-                  <ActivityIndicator color={colors.primary} />
-                ) : (
-                  <Text style={{ color: colors.primary, fontWeight: FontWeight.medium }}>
-                    Load More Reviews
-                  </Text>
-                )}
-              </TouchableOpacity>
-            )}
           </View>
+
+          {filteredReviews.length === 0 ? (
+            <Text style={{ color: colors.mutedForeground, marginTop: 8 }}>
+              {selectedRating !== null
+                ? `No ${selectedRating}★ reviews found.`
+                : 'No reviews yet. Be the first to review!'}
+            </Text>
+          ) : (
+            <View style={{ marginTop: Spacing.md, gap: Spacing.md }}>
+              {filteredReviews.map((r) => (
+                <ReviewCard
+                  key={r.id}
+                  review={r}
+                  onHelpfulPress={handleHelpfulPress}
+                  isHelpful={helpfulReviews.includes(r.id)}
+                />
+              ))}
+            </View>
+          )}
         </View>
       </ScrollView>
 
+      {/* Add Review Modal */}
       <AddReviewModal
         visible={isReviewModalOpen}
         onClose={() => setIsReviewModalOpen(false)}
         productName={displayName}
-        onSubmit={handleAddReview}
+        onSubmit={handleSubmitReview}
       />
     </ScreenWrapper>
   );
 };
 
+export const ProductDetailsScreen: React.FC = () => {
+  return (
+    <ToastProvider>
+      <ProductDetailsContent />
+    </ToastProvider>
+  );
+};
+
 const styles = StyleSheet.create({
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12 },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: Spacing.lg,
+    paddingHorizontal: Spacing['2xl'],
+  },
+
+  errorText: {
+    fontSize: FontSize.xl,
+    fontWeight: FontWeight.bold,
+  },
 
   backButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.sm,
+    gap: Spacing.xs,
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.md,
   },
-  backButtonText: { fontSize: FontSize.sm, fontWeight: FontWeight.medium },
+
+  backButtonText: {
+    fontSize: FontSize.base,
+    fontWeight: FontWeight.medium,
+  },
 
   imageContainer: {
+    position: 'relative',
+    width: '100%',
     aspectRatio: 1,
-    marginHorizontal: Spacing.lg,
-    borderRadius: BorderRadius.xl,
-    overflow: 'hidden',
-    ...Shadow.soft,
+    maxHeight: 400,
   },
-  image: { width: '100%', height: '100%' },
-  imageOverlay: { position: 'absolute', left: 0, right: 0, bottom: 0, height: '55%' },
-  imageText: {
+
+  image: {
+    width: '100%',
+    height: '100%',
+  },
+
+  wishlistButton: {
     position: 'absolute',
-    left: Spacing.lg,
+    top: Spacing.lg,
     right: Spacing.lg,
-    bottom: Spacing.lg,
-    color: '#fff',
-    fontSize: FontSize['2xl'],
-    fontWeight: FontWeight.bold,
-  },
-  noImage: {
-    flex: 1,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
+    ...Shadow.soft,
   },
 
-  content: { padding: Spacing.lg, gap: Spacing.lg },
-  title: { fontSize: FontSize['2xl'], fontWeight: FontWeight.bold },
-
-  ratingRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
-  ratingMeta: { fontSize: FontSize.sm, textDecorationLine: 'underline' },
-
-  description: { fontSize: FontSize.base, lineHeight: 20 },
-
-  section: { gap: Spacing.md, marginTop: Spacing.lg, marginBottom: Spacing.xl },
-  sectionHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+  infoSection: {
+    padding: Spacing.lg,
+    gap: Spacing.sm,
   },
-  sectionTitle: { fontSize: FontSize.lg, fontWeight: FontWeight.bold },
 
-  clearPill: {
+  category: {
+    fontSize: FontSize.sm,
+    fontWeight: FontWeight.medium,
+    textTransform: 'uppercase',
+  },
+
+  productName: {
+    fontSize: FontSize['2xl'],
+    fontWeight: FontWeight.bold,
+    lineHeight: FontSize['2xl'] * 1.3,
+  },
+
+  price: {
+    fontSize: FontSize.xl,
+    fontWeight: FontWeight.bold,
+  },
+
+  ratingRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 6,
-    borderRadius: BorderRadius.full,
+    gap: Spacing.sm,
+    marginTop: Spacing.sm,
+  },
+
+  ratingText: {
+    fontSize: FontSize.lg,
+    fontWeight: FontWeight.bold,
+  },
+
+  reviewCountText: {
+    fontSize: FontSize.base,
+  },
+
+  description: {
+    fontSize: FontSize.base,
+    lineHeight: FontSize.base * 1.6,
+    marginTop: Spacing.md,
+  },
+
+  section: {
+    padding: Spacing.lg,
+    gap: Spacing.md,
+  },
+
+  sectionTitle: {
+    fontSize: FontSize.xl,
+    fontWeight: FontWeight.bold,
   },
 
   reviewsHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: Spacing.md,
+    marginBottom: Spacing.md,
   },
-  
-  loadMoreButton: {
-    padding: Spacing.md,
+
+  reviewActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+
+  aiChatButton: {
+    ...Shadow.soft,
+  },
+
+  aiChatGradient: {
+    width: 44,
+    height: 44,
+    borderRadius: BorderRadius.full,
     alignItems: 'center',
     justifyContent: 'center',
-  }
+  },
 });

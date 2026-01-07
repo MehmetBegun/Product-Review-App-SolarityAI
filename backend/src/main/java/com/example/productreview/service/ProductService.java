@@ -7,6 +7,7 @@ import com.example.productreview.model.Review;
 import com.example.productreview.repository.ProductRepository;
 import com.example.productreview.repository.ReviewRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -19,9 +20,11 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class ProductService {
     private final ProductRepository productRepository;
     private final ReviewRepository reviewRepository;
+    private final AISummaryService aiSummaryService;
 
     public Page<ProductDTO> getAllProducts(String category, Pageable pageable) {
         if (category != null && !category.isEmpty() && !category.equalsIgnoreCase("All")) {
@@ -51,6 +54,28 @@ public class ProductService {
         }
         
         productDTO.setRatingBreakdown(ratingBreakdown);
+        
+        // ✨ Generate AI summary for product details view
+        // This is cached, so subsequent calls are fast
+        try {
+            List<Review> reviews = reviewRepository.findByProductId(id);
+            if (reviews.size() >= 3) {
+                String aiSummary = aiSummaryService.generateReviewSummary(
+                        id, 
+                        product.getName(), 
+                        reviews
+                );
+                productDTO.setAiSummary(aiSummary);
+                log.info("Added AI summary to product {}: {}", id, aiSummary != null);
+            } else {
+                log.info("Product {} has only {} reviews, skipping AI summary", id, reviews.size());
+            }
+        } catch (Exception e) {
+            log.error("Error generating AI summary for product {}: {}", id, e.getMessage());
+            // Don't fail the request if AI summary fails
+            productDTO.setAiSummary(null);
+        }
+        
         return productDTO;
     }
 
@@ -139,7 +164,8 @@ public class ProductService {
                 product.getImageUrl(),
                 product.getAverageRating(),
                 product.getReviewCount(),
-                null // ratingBreakdown is null by default for list view
+                null, // ratingBreakdown is null by default for list view
+                null  // aiSummary is null for list view, only populated in detail view
         );
     }
 }
