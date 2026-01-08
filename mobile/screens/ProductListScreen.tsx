@@ -24,6 +24,7 @@ import { SelectableProductCard } from '../components/SelectableProductCard';
 import { CategoryFilter } from '../components/CategoryFilter';
 import { SortFilter } from '../components/SortFilter';
 import { SearchBar } from '../components/SearchBar';
+import { LoadMoreCard } from '../components/LoadMoreCard';
 import { useNotifications } from '../context/NotificationContext';
 import { useWishlist, WishlistItem } from '../context/WishlistContext';
 import { useTheme } from '../context/ThemeContext';
@@ -396,17 +397,18 @@ export const ProductListScreen: React.FC = () => {
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="none"
         
-        onEndReached={loadMoreProducts}
-        onEndReachedThreshold={0.5}
         ListFooterComponent={
-          loadingMore ? (
-            <View style={{ paddingVertical: Spacing.xl, alignItems: 'center' }}>
-              <ActivityIndicator color={colors.primary} />
-              <Text style={{ color: colors.mutedForeground, marginTop: Spacing.sm, fontSize: 12 }}>
-                Loading more products...
-              </Text>
-            </View>
-          ) : null
+          <>
+            {filteredProducts.length > 0 && (
+              <LoadMoreCard
+                onPress={loadMoreProducts}
+                loading={loadingMore}
+                hasMore={hasMore}
+                currentPage={currentPage}
+                totalPages={totalPages}
+              />
+            )}
+          </>
         }
         
         ListEmptyComponent={

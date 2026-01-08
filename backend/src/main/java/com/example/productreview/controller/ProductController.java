@@ -22,7 +22,7 @@ public class ProductController {
     @GetMapping
     public Page<ProductDTO> getAllProducts(
             @RequestParam(required = false) String category,
-            @PageableDefault(size = 10) Pageable pageable) {
+            @PageableDefault(size = 20) Pageable pageable) {
         return productService.getAllProducts(category, pageable);
     }
 
