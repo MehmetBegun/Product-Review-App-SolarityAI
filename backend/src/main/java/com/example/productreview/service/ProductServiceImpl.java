@@ -6,8 +6,8 @@ import com.example.productreview.model.Product;
 import com.example.productreview.model.Review;
 import com.example.productreview.repository.ProductRepository;
 import com.example.productreview.repository.ReviewRepository;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -19,12 +19,19 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
-@RequiredArgsConstructor
-@Slf4j
 public class ProductServiceImpl implements ProductService {
+    
+    private static final Logger log = LoggerFactory.getLogger(ProductServiceImpl.class);
+    
     private final ProductRepository productRepository;
     private final ReviewRepository reviewRepository;
     private final AISummaryService aiSummaryService;
+
+    public ProductServiceImpl(ProductRepository productRepository, ReviewRepository reviewRepository, AISummaryService aiSummaryService) {
+        this.productRepository = productRepository;
+        this.reviewRepository = reviewRepository;
+        this.aiSummaryService = aiSummaryService;
+    }
 
     @Override
     public Page<ProductDTO> getAllProducts(String category, Pageable pageable) {

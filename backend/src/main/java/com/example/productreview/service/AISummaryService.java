@@ -1,7 +1,8 @@
 package com.example.productreview.service;
 
 import com.example.productreview.model.Review;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
@@ -14,8 +15,9 @@ import java.util.stream.Collectors;
  * TEST MODE: Returns mock summaries without calling OpenAI API
  */
 @Service
-@Slf4j
 public class AISummaryService {
+    
+    private static final Logger log = LoggerFactory.getLogger(AISummaryService.class);
     
     private final String apiKey;
     private final String model;

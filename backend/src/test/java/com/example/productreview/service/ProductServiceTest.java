@@ -1,28 +1,31 @@
 package com.example.productreview.service;
 
 import com.example.productreview.dto.ProductDTO;
+import com.example.productreview.dto.ReviewDTO;
 import com.example.productreview.model.Product;
 import com.example.productreview.model.Review;
 import com.example.productreview.repository.ProductRepository;
 import com.example.productreview.repository.ReviewRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-
+import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
-class ProductServiceTest {
+@ExtendWith(MockitoExtension.class)
+public class ProductServiceTest {
 
     @Mock
     private ProductRepository productRepository;
@@ -34,15 +37,13 @@ class ProductServiceTest {
     private AISummaryService aiSummaryService;
 
     @InjectMocks
-    private ProductService productService;
+    private ProductServiceImpl productService;
 
     private Product product;
     private ProductDTO productDTO;
 
     @BeforeEach
     void setUp() {
-        MockitoAnnotations.openMocks(this);
-        
         product = new Product();
         product.setId(1L);
         product.setName("Test Product");
@@ -50,21 +51,10 @@ class ProductServiceTest {
         product.setCategory("Category");
         product.setPrice(100.0);
         product.setImageUrl("http://example.com/image.jpg");
-        product.setAverageRating(4.5);
-        product.setReviewCount(10);
+        product.setAverageRating(0.0);
+        product.setReviewCount(0);
 
-        // Create ProductDTO without aiSummary (using backward compatible constructor)
-        productDTO = new ProductDTO(
-            1L, 
-            "Test Product", 
-            "Description", 
-            "Category", 
-            100.0, 
-            "http://example.com/image.jpg", 
-            4.5, 
-            10, 
-            null
-        );
+        productDTO = new ProductDTO(1L, "Test Product", "Description", "Category", 100.0, "http://example.com/image.jpg", 0.0, 0, null, null);
     }
 
     @Test
@@ -73,29 +63,48 @@ class ProductServiceTest {
         Page<Product> productPage = new PageImpl<>(Arrays.asList(product));
         when(productRepository.findAll(pageable)).thenReturn(productPage);
 
-        // Updated to pass null as category
         Page<ProductDTO> result = productService.getAllProducts(null, pageable);
 
         assertNotNull(result);
         assertEquals(1, result.getContent().size());
+        assertEquals(product.getName(), result.getContent().get(0).getName());
+        verify(productRepository, times(1)).findAll(pageable);
     }
 
     @Test
-    void getProductById_ShouldReturnProduct() {
+    void getProductDTOById_ShouldReturnDTO() {
         when(productRepository.findById(1L)).thenReturn(Optional.of(product));
-        when(reviewRepository.findRatingCountsByProductId(1L)).thenReturn(Arrays.asList());
-        when(reviewRepository.findByProductId(1L)).thenReturn(Arrays.asList());
+        when(reviewRepository.findRatingCountsByProductId(1L)).thenReturn(new ArrayList<>());
+        when(reviewRepository.findByProductId(1L)).thenReturn(new ArrayList<>()); // For AI summary check
 
-        Product result = productService.getProductById(1L);
+        ProductDTO result = productService.getProductDTOById(1L);
 
         assertNotNull(result);
-        assertEquals("Test Product", result.getName());
+        assertEquals(product.getName(), result.getName());
     }
 
     @Test
-    void getProductById_ShouldThrowExceptionWhenNotFound() {
-        when(productRepository.findById(1L)).thenReturn(Optional.empty());
+    void addReview_ShouldUpdateStatsAndReturnDTO() {
+        ReviewDTO reviewDTO = new ReviewDTO();
+        reviewDTO.setReviewerName("User");
+        reviewDTO.setComment("Good product indeed");
+        reviewDTO.setRating(5);
 
-        assertThrows(RuntimeException.class, () -> productService.getProductById(1L));
+        Review review = new Review();
+        review.setId(1L);
+        review.setReviewerName("User");
+        review.setRating(5);
+        review.setProduct(product);
+
+        when(productRepository.findById(1L)).thenReturn(Optional.of(product));
+        when(reviewRepository.save(any(Review.class))).thenReturn(review);
+        when(reviewRepository.findByProductId(1L)).thenReturn(Arrays.asList(review));
+
+        ReviewDTO result = productService.addReview(1L, reviewDTO);
+
+        assertNotNull(result);
+        assertEquals(1, product.getReviewCount());
+        assertEquals(5.0, product.getAverageRating());
+        verify(productRepository, times(1)).save(product);
     }
 }

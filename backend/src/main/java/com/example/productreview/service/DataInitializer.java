@@ -4,7 +4,6 @@ import com.example.productreview.model.Product;
 import com.example.productreview.model.Review;
 import com.example.productreview.repository.ProductRepository;
 import com.example.productreview.repository.ReviewRepository;
-import lombok.RequiredArgsConstructor;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
@@ -13,10 +12,14 @@ import java.util.List;
 import java.util.Random;
 
 @Component
-@RequiredArgsConstructor
 public class DataInitializer implements CommandLineRunner {
     private final ProductRepository productRepository;
     private final ReviewRepository reviewRepository;
+
+    public DataInitializer(ProductRepository productRepository, ReviewRepository reviewRepository) {
+        this.productRepository = productRepository;
+        this.reviewRepository = reviewRepository;
+    }
 
     @Override
     public void run(String... args) {
@@ -31,7 +34,6 @@ public class DataInitializer implements CommandLineRunner {
             // Laptops
             products.add(createProduct("MacBook Air M2", "Strikingly thin design and incredible speed.", "Laptops", 1099.00, "https://images.unsplash.com/photo-1611186871348-b1ce696e52c9?auto=format&fit=crop&q=80&w=800"));
             products.add(createProduct("Dell XPS 13", "Compact and powerful ultrabook.", "Laptops", 1299.00, "https://images.unsplash.com/photo-1593642702821-c8da6771f0c6?auto=format&fit=crop&q=80&w=800"));
-            // MacBook Pro 14 removed
             products.add(createProduct("Asus ROG Zephyrus", "Gaming power in a slim chassis.", "Laptops", 1799.00, "https://images.unsplash.com/photo-1603302576837-37561b2e2302?auto=format&fit=crop&q=80&w=800"));
 
             // Tablets
