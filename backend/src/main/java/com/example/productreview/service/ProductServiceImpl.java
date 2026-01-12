@@ -18,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -129,25 +130,30 @@ public class ProductServiceImpl implements ProductService {
         Review review = reviewRepository.findById(reviewId)
                 .orElseThrow(() -> new RuntimeException("Review not found"));
 
-        // Check if user already voted
-        if (userId != null && reviewVoteRepository.findByUserIdAndReviewId(userId, reviewId).isPresent()) {
-            // User already voted, maybe toggle off? Or just return existing.
-            // For now, let's assume we can't vote twice.
-            return convertToReviewDTO(review);
-        }
-
         if (review.getHelpfulCount() == null) {
             review.setHelpfulCount(0);
         }
-        
-        review.setHelpfulCount(review.getHelpfulCount() + 1);
-        Review savedReview = reviewRepository.save(review);
-        
-        // Record vote
-        if (userId != null) {
-            reviewVoteRepository.save(new ReviewVote(userId, reviewId));
-        }
 
+        if (userId != null) {
+            Optional<ReviewVote> existingVote = reviewVoteRepository.findByUserIdAndReviewId(userId, reviewId);
+            
+            if (existingVote.isPresent()) {
+                // ✨ Toggle OFF: Remove vote and decrease count
+                reviewVoteRepository.delete(existingVote.get());
+                if (review.getHelpfulCount() > 0) {
+                    review.setHelpfulCount(review.getHelpfulCount() - 1);
+                }
+            } else {
+                // ✨ Toggle ON: Add vote and increase count
+                reviewVoteRepository.save(new ReviewVote(userId, reviewId));
+                review.setHelpfulCount(review.getHelpfulCount() + 1);
+            }
+        } else {
+            // Fallback for anonymous (shouldn't happen with new frontend)
+            review.setHelpfulCount(review.getHelpfulCount() + 1);
+        }
+        
+        Review savedReview = reviewRepository.save(review);
         return convertToReviewDTO(savedReview);
     }
     
