@@ -19,8 +19,8 @@ The project emphasizes **clean architecture, REST API design, performance optimi
 
 **Assignment:** You must choose and implement **only one** of the following frontend stacks:
 
-1.  **iOS (Swift):** See [README-iOS-Swift.md](./README-iOS-Swift.md) for requirements.
-2.  **Android (Kotlin):** See [README-Android-Kotlin.md](./README-Android-Kotlin.md) for requirements.
+1.  **iOS (Swift):** See [mobile/README-iOS-Swift.md](./mobile/README-iOS-Swift.md) for requirements.
+2.  **Android (Kotlin):** See [mobile/README-Android-Kotlin.md](./mobile/README-Android-Kotlin.md) for requirements.
 
 > **Note:** The current `mobile/` folder contains a **React Native** implementation. This serves as a **reference** for how the UI should look and how to consume the Backend API. You are expected to build a native version (Swift or Kotlin) matching these features.
 
@@ -96,7 +96,7 @@ The system follows a layered architecture:
 cd backend
 ./mvnw spring-boot:run
 ```
-See [backend/README.md](./backend/README.md) for more details.
+See [backend/README-SpringBoot.md](./backend/README-SpringBoot.md) for more details.
 
 ### Frontend (Reference Implementation - React Native)
 ```bash
@@ -104,7 +104,6 @@ cd mobile
 npm install
 npx expo start
 ```
-See [mobile/README.md](./mobile/README.md) for more details.
 - Press `w` for Web
 - Press `a` for Android (Emulator)
 - Scan QR code for iOS (Expo Go)
@@ -115,5 +114,5 @@ See [mobile/README.md](./mobile/README.md) for more details.
 
 - **/backend:** Spring Boot application source code.
 - **/mobile:** React Native (Expo) application source code (Reference).
-- **README-iOS-Swift.md:** Instructions for iOS implementation option.
-- **README-Android-Kotlin.md:** Instructions for Android implementation option.
+- **mobile/README-iOS-Swift.md:** Instructions for iOS implementation option.
+- **mobile/README-Android-Kotlin.md:** Instructions for Android implementation option.
