@@ -1,8 +1,9 @@
-// React Native App Entry Point with SafeAreaProvider, Notifications, Toast, Wishlist, Theme
+// React Native App Entry Point with SafeAreaProvider, Notifications, Toast, Wishlist, Theme, and Linking
 import React from 'react';
-import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
+import { NavigationContainer, DefaultTheme, DarkTheme, LinkingOptions } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import * as Linking from 'expo-linking';
 
 import { ProductListScreen } from './screens/ProductListScreen';
 import { ProductDetailsScreen } from './screens/ProductDetailsScreen';
@@ -12,12 +13,27 @@ import { WishlistScreen } from './screens/WishlistScreen';
 import { AIAssistantScreen } from './screens/AIAssistantScreen';
 import { NotificationProvider } from './context/NotificationContext';
 import { WishlistProvider } from './context/WishlistContext';
-import { SearchProvider } from './context/SearchContext'; // ✨ Import SearchProvider
+import { SearchProvider } from './context/SearchContext';
 import { ToastProvider } from './context/ToastContext';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { RootStackParamList } from './types';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
+
+// ✨ Define linking configuration for Web support
+const linking: LinkingOptions<RootStackParamList> = {
+  prefixes: [Linking.createURL('/')],
+  config: {
+    screens: {
+      ProductList: '',
+      ProductDetails: 'product/:productId',
+      Notifications: 'notifications',
+      NotificationDetail: 'notifications/:notificationId',
+      Wishlist: 'wishlist',
+      AIAssistant: 'product/:productId/chat',
+    },
+  },
+};
 
 // Navigation wrapper that consumes theme
 function AppNavigator() {
@@ -38,13 +54,15 @@ function AppNavigator() {
   };
 
   return (
-    <NavigationContainer theme={navigationTheme}>
+    <NavigationContainer 
+      theme={navigationTheme} 
+      linking={linking} // ✨ Added linking
+    >
       <Stack.Navigator
         initialRouteName="ProductList"
         screenOptions={{
           headerShown: false,
           animation: 'slide_from_right',
-          // FIX: Ensure consistent background during transitions
           contentStyle: {
             backgroundColor: colors.background,
           },
@@ -70,7 +88,7 @@ function AppNavigator() {
         <Stack.Screen 
           name="AIAssistant" 
           component={AIAssistantScreen}
-          options={{ animation: 'slide_from_bottom' }} // Nice animation for chat
+          options={{ animation: 'slide_from_bottom' }}
         />
       </Stack.Navigator>
     </NavigationContainer>

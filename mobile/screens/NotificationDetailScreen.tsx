@@ -77,11 +77,20 @@ export const NotificationDetailScreen: React.FC = () => {
     }
   }, [notification, markAsRead]);
 
+  // ✨ Improved back handler for Web/Deep Links
+  const handleBack = () => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+    } else {
+      navigation.navigate('Notifications' as any);
+    }
+  };
+
   if (!notification) {
     return (
       <ScreenWrapper backgroundColor={colors.background}>
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+          <TouchableOpacity onPress={handleBack} style={styles.backButton}>
             <Ionicons name="arrow-back" size={22} color={colors.foreground} />
           </TouchableOpacity>
         </View>
@@ -102,7 +111,7 @@ export const NotificationDetailScreen: React.FC = () => {
 
   const handleDelete = () => {
     clearNotification(notification.id);
-    navigation.goBack();
+    handleBack();
   };
 
   const handleViewProduct = () => {
@@ -117,7 +126,7 @@ export const NotificationDetailScreen: React.FC = () => {
     <ScreenWrapper backgroundColor={colors.background}>
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+        <TouchableOpacity onPress={handleBack} style={styles.backButton}>
           <Ionicons name="arrow-back" size={22} color={colors.foreground} />
         </TouchableOpacity>
 

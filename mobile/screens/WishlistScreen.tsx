@@ -84,6 +84,15 @@ export const WishlistScreen: React.FC = () => {
     return 'apps';
   };
 
+  // ✨ Improved back handler for Web/Deep Links
+  const handleBack = () => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+    } else {
+      navigation.navigate('ProductList' as any);
+    }
+  };
+
   // Selection handlers
   const handleCardPress = (item: WishlistItem) => {
     if (isSelectionMode) {
@@ -231,7 +240,7 @@ export const WishlistScreen: React.FC = () => {
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
         <View style={styles.headerLeft}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+          <TouchableOpacity onPress={handleBack} style={styles.backButton}>
             <Ionicons name="arrow-back" size={22} color={colors.foreground} />
           </TouchableOpacity>
           <View>

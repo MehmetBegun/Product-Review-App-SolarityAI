@@ -11,10 +11,10 @@ import {
   ActivityIndicator,
   useWindowDimensions,
   Platform,
-  ScrollView, // ✨ Added ScrollView
+  ScrollView,
 } from 'react-native';
 
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useNavigation, useFocusEffect, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -36,6 +36,7 @@ import { Spacing, FontSize, FontWeight, BorderRadius } from '../constants/theme'
 
 export const ProductListScreen: React.FC = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const route = useRoute<RouteProp<RootStackParamList, 'ProductList'>>();
   const { colors, colorScheme, toggleTheme } = useTheme();
   const { unreadCount } = useNotifications();
   const { wishlistCount } = useWishlist();
@@ -64,11 +65,20 @@ export const ProductListScreen: React.FC = () => {
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [totalPages, setTotalPages] = useState(0);
+  const [totalProductsCount, setTotalProductsCount] = useState(0);
 
-  const [selectedCategory, setSelectedCategory] = useState('All');
+  const initialCategory = (route.params as any)?.category || 'All';
+  const [selectedCategory, setSelectedCategory] = useState(initialCategory);
+  
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState('name,asc');
+
+  useEffect(() => {
+    if ((route.params as any)?.category) {
+      setSelectedCategory((route.params as any).category);
+    }
+  }, [route.params]);
 
   // Debounce search query
   useEffect(() => {
@@ -195,6 +205,7 @@ export const ProductListScreen: React.FC = () => {
       setCurrentPage(pageNum);
       setTotalPages(page?.totalPages ?? 0);
       setHasMore(!page?.last);
+      setTotalProductsCount(page?.totalElements ?? 0);
       
     } catch (e: any) {
       console.error('Fetch error:', e);
@@ -233,25 +244,41 @@ export const ProductListScreen: React.FC = () => {
     return {
       totalReviews,
       avgRating,
-      productCount: apiProducts.length,
+      productCount: totalProductsCount,
     };
-  }, [apiProducts]);
+  }, [apiProducts, totalProductsCount]);
 
   const handleSearchSubmit = (term: string) => {
     setSearchQuery(term);
     addSearchTerm(term);
   };
 
-  // ✨ Split header into static parts
+  const handleCategoryChange = (category: string) => {
+    setSelectedCategory(category);
+    if (Platform.OS === 'web') {
+      navigation.setParams({ category } as any);
+    }
+  };
+
+  // ✨ Reset all filters to default state
+  const handleReset = () => {
+    setSearchQuery('');
+    setSelectedCategory('All');
+    setSortBy('name,asc');
+    if (Platform.OS === 'web') {
+      navigation.setParams({ category: 'All', search: '' } as any);
+    }
+  };
+
   const topHeader = (
     <View>
       <View style={styles.topBar}>
-        <View style={styles.logoContainer}>
+        <TouchableOpacity onPress={handleReset} style={styles.logoContainer}>
           <LinearGradient colors={[colors.primary, colors.accent]} style={styles.logoIcon}>
             <Ionicons name="star" size={16} color={colors.primaryForeground} />
           </LinearGradient>
           <Text style={[styles.logoText, { color: colors.foreground }]}>ProductReview</Text>
-        </View>
+        </TouchableOpacity>
 
         <View style={styles.headerButtons}>
           <TouchableOpacity
@@ -327,7 +354,10 @@ export const ProductListScreen: React.FC = () => {
       </View>
 
       <View style={styles.categoryFilterWrapper}>
-        <CategoryFilter selectedCategory={selectedCategory} onCategoryChange={setSelectedCategory} />
+        <CategoryFilter 
+          selectedCategory={selectedCategory} 
+          onCategoryChange={handleCategoryChange}
+        />
       </View>
 
       <View style={styles.sortFilterWrapper}>
@@ -422,7 +452,7 @@ export const ProductListScreen: React.FC = () => {
             
             ListEmptyComponent={
               !loading ? (
-                <View style={{ padding: Spacing.xl }}>
+                <View style={{ padding: Spacing.xl, zIndex: -1 }}>
                   <Text style={{ color: colors.mutedForeground }}>No products found.</Text>
                 </View>
               ) : null
@@ -556,8 +586,8 @@ const styles = StyleSheet.create({
 
   searchSection: { 
     paddingVertical: Spacing.lg,
-    zIndex: 9999, // ✨ Very high zIndex
-    elevation: 20, // ✨ High elevation
+    zIndex: 9999,
+    elevation: 20,
   },
 
   sectionHeader: { paddingHorizontal: Spacing.lg, marginBottom: Spacing.sm },
@@ -571,7 +601,6 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.lg,
   },
 
-  // YENİ: Grid toggle için
   sortHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -596,7 +625,7 @@ const styles = StyleSheet.create({
   listContent: {
     paddingBottom: Spacing['3xl'],
     paddingTop: Spacing.sm,
-    // zIndex removed as it's now in a separate view
+    zIndex: -1,
   },
 
   columnWrapper: {
