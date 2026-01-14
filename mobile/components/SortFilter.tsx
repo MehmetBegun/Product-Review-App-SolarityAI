@@ -20,13 +20,12 @@ export type SortOption = {
 };
 
 export const SORT_OPTIONS: SortOption[] = [
-  { value: 'name,asc', label: 'Name (A-Z)', icon: 'text' },
-  { value: 'name,desc', label: 'Name (Z-A)', icon: 'text' },
-  { value: 'averageRating,desc', label: 'Top Rated', icon: 'star' },
-  { value: 'averageRating,asc', label: 'Low Rated', icon: 'star-outline' },
-  { value: 'price,asc', label: 'Price: Low-High', icon: 'arrow-up' },
-  { value: 'price,desc', label: 'Price: High-Low', icon: 'arrow-down' },
-  { value: 'reviewCount,desc', label: 'Most Reviewed', icon: 'chatbubbles' },
+  { value: 'name,asc', label: 'Aa Name (A-Z)', icon: 'text' },
+  { value: 'name,desc', label: 'Aa Name (Z-A)', icon: 'text' },
+  { value: 'averageRating,desc', label: '★ Top Rated', icon: 'star' },
+  { value: 'price,asc', label: 'Low → High', icon: 'arrow-up' },
+  { value: 'price,desc', label: 'High → Low', icon: 'arrow-down' },
+  { value: 'reviewCount,desc', label: 'Most Reviews', icon: 'chatbubbles' },
 ];
 
 interface SortFilterProps {
@@ -62,11 +61,6 @@ export const SortFilter: React.FC<SortFilterProps> = ({
               },
             ]}
           >
-            <Ionicons
-              name={option.icon}
-              size={14}
-              color={isSelected ? colors.primaryForeground : colors.secondaryForeground}
-            />
             <Text
               style={[
                 styles.chipText,

@@ -29,6 +29,8 @@ import { SelectableProductCard } from '../components/SelectableProductCard';
 import { SearchBar } from '../components/SearchBar';
 import { LoadMoreCard } from '../components/LoadMoreCard';
 import { OfflineBanner } from '../components/OfflineBanner';
+import { CategoryFilter } from '../components/CategoryFilter';
+import { SortFilter } from '../components/SortFilter';
 import { useNotifications } from '../context/NotificationContext';
 import { useWishlist } from '../context/WishlistContext';
 import { useTheme } from '../context/ThemeContext';
@@ -267,6 +269,20 @@ export const ProductListScreen = () => {
     if (Platform.OS === 'web') navigation.setParams({ search } as any);
   };
 
+  const handleCategoryChange = (category: string) => {
+    setSelectedCategory(category);
+    if (Platform.OS === 'web') navigation.setParams({ category } as any);
+  };
+
+  const handleSortChange = async (sort: string) => {
+    setSortBy(sort);
+    try {
+      await AsyncStorage.setItem(SORT_STORAGE_KEY, sort);
+    } catch (error) {
+      console.error('Failed to save sort preference:', error);
+    }
+  };
+
   const handleReset = () => {
     lastFetchParamsRef.current = '';
     setSearchQuery('');
@@ -449,6 +465,44 @@ export const ProductListScreen = () => {
             >
               <SearchBar value={searchQuery} onChangeText={setSearchQuery} onSearchSubmit={handleSearchSubmit} />
             </View>
+          </View>
+
+          {/* Filter Section */}
+          <View style={[
+            styles.filterSection,
+            isWeb && styles.filterSectionWeb,
+            isWeb && { maxWidth: containerMaxWidth },
+          ]}>
+            <Text style={[styles.filterSectionTitle, { color: colors.foreground }]}>
+              Explore Products
+            </Text>
+            <CategoryFilter
+              selectedCategory={selectedCategory}
+              onCategoryChange={handleCategoryChange}
+            />
+            <View style={styles.sortRow}>
+              <Text style={[styles.sortLabel, { color: colors.mutedForeground }]}>Sort by:</Text>
+              <View style={styles.gridButtonInline}>
+                <TouchableOpacity
+                  style={[
+                    styles.gridToggleSmall,
+                    { backgroundColor: colors.secondary },
+                  ]}
+                  onPress={toggleGridMode}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons
+                    name={gridMode === 1 ? 'list' : gridMode === 2 ? 'grid-outline' : 'grid'}
+                    size={16}
+                    color={colors.foreground}
+                  />
+                </TouchableOpacity>
+              </View>
+            </View>
+            <SortFilter
+              selectedSort={sortBy}
+              onSortChange={handleSortChange}
+            />
           </View>
 
           {isOffline && <OfflineBanner onRetry={handleRetry} />}
@@ -732,6 +786,45 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
     paddingTop: Spacing.xs,
     paddingBottom: Spacing.sm,
+  },
+
+  // Filter Section Styles
+  filterSection: {
+    paddingHorizontal: 0,
+    paddingTop: Spacing.sm,
+    paddingBottom: Spacing.md,
+    gap: Spacing.sm,
+  },
+  filterSectionWeb: {
+    width: '100%',
+    alignSelf: 'center',
+    paddingHorizontal: 0,
+  },
+  filterSectionTitle: {
+    fontSize: FontSize.lg,
+    fontWeight: FontWeight.bold,
+    paddingHorizontal: Spacing.lg,
+    marginBottom: Spacing.xs,
+  },
+  sortRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.lg,
+    gap: Spacing.sm,
+  },
+  sortLabel: {
+    fontSize: FontSize.sm,
+    fontWeight: FontWeight.medium,
+  },
+  gridButtonInline: {
+    marginLeft: 'auto',
+  },
+  gridToggleSmall: {
+    borderRadius: BorderRadius.full,
+    width: 32,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 
   listContent: {
