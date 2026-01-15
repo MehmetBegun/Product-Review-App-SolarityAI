@@ -8,17 +8,32 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
+
 @Repository
 public interface ProductRepository extends JpaRepository<Product, Long> {
     
-    // ✨ Using MEMBER OF for cleaner collection search
     @Query("SELECT p FROM Product p WHERE :category MEMBER OF p.categories")
     Page<Product> findByCategory(@Param("category") String category, Pageable pageable);
     
     @Query("SELECT p FROM Product p WHERE LOWER(p.name) LIKE LOWER(CONCAT('%', :name, '%'))")
     Page<Product> findByNameContainingIgnoreCase(@Param("name") String name, Pageable pageable);
     
-    // ✨ Using MEMBER OF with Name search
     @Query("SELECT p FROM Product p WHERE :category MEMBER OF p.categories AND LOWER(p.name) LIKE LOWER(CONCAT('%', :name, '%'))")
     Page<Product> findByCategoryAndNameContainingIgnoreCase(@Param("category") String category, @Param("name") String name, Pageable pageable);
+
+    @Query("SELECT SUM(p.reviewCount), AVG(p.averageRating) FROM Product p")
+    Object[] getGlobalStats();
+    
+    @Query("SELECT SUM(p.reviewCount), AVG(p.averageRating) FROM Product p WHERE :category MEMBER OF p.categories")
+    Object[] getCategoryStats(@Param("category") String category);
+    
+    @Query("SELECT SUM(p.reviewCount), AVG(p.averageRating) FROM Product p WHERE LOWER(p.name) LIKE LOWER(CONCAT('%', :name, '%'))")
+    Object[] getSearchStats(@Param("name") String name);
+    
+    @Query("SELECT SUM(p.reviewCount), AVG(p.averageRating) FROM Product p WHERE :category MEMBER OF p.categories AND LOWER(p.name) LIKE LOWER(CONCAT('%', :name, '%'))")
+    Object[] getCategoryAndSearchStats(@Param("category") String category, @Param("name") String name);
+
+    // ✨ New method for paged find by IDs
+    Page<Product> findByIdIn(List<Long> ids, Pageable pageable);
 }

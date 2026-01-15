@@ -19,9 +19,11 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { ScreenWrapper } from '../components/ScreenWrapper';
 import { SelectableWishlistCard } from '../components/SelectableWishlistCard';
+import { LoadMoreCard } from '../components/LoadMoreCard'; // ✨ Added LoadMoreCard
 
-import { useWishlist, WishlistItem } from '../context/WishlistContext';
+import { useWishlist } from '../context/WishlistContext';
 import { useTheme } from '../context/ThemeContext';
+import { getWishlistProducts, ApiProduct } from '../services/api'; // ✨ Added API call
 
 import { RootStackParamList } from '../types';
 import { BorderRadius, FontSize, FontWeight, Spacing } from '../constants/theme';
@@ -33,23 +35,65 @@ const GRID_STORAGE_KEY = 'wishlist_grid_mode';
 export const WishlistScreen = () => {
   const navigation = useNavigation<WishlistNavigationProp>();
   const { colors, colorScheme, toggleTheme } = useTheme();
-  const { wishlist, removeFromWishlist, clearWishlist } = useWishlist();
+  const { removeFromWishlist, clearWishlist, wishlistCount } = useWishlist();
 
   const { width } = useWindowDimensions();
   const isWeb = Platform.OS === 'web';
   const webBp = !isWeb ? 'mobile' : width < 720 ? 'narrow' : width < 1100 ? 'medium' : 'wide';
 
-  // Web’de daha büyük ikon + buton
   const headerIconSize = isWeb ? (webBp === 'wide' ? 26 : 24) : 20;
   const headerIconSizeBig = isWeb ? (webBp === 'wide' ? 28 : 26) : 22;
 
-  // Grid mode: 1 / 2 / 3
   const [gridMode, setGridMode] = useState<1 | 2 | 3>(2);
   const numColumns = gridMode;
 
   const gridTouchedRef = useRef(false);
 
-  // Web auto-grid (kullanıcı grid toggle’a basarsa auto kapanır)
+  // ✨ Pagination states
+  const [pagedWishlist, setPagedWishlist] = useState<ApiProduct[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [currentPage, setCurrentPage] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalItems, setTotalItems] = useState(0);
+
+  const fetchWishlist = useCallback(async (pageNum: number = 0, append: boolean = false) => {
+    try {
+      if (!append) setLoading(true);
+      else setLoadingMore(true);
+
+      const page = await getWishlistProducts({ page: pageNum, size: 10 });
+      
+      if (append) {
+        setPagedWishlist(prev => [...prev, ...page.content]);
+      } else {
+        setPagedWishlist(page.content);
+      }
+
+      setCurrentPage(pageNum);
+      setTotalPages(page.totalPages);
+      setHasMore(!page.last);
+      setTotalItems(page.totalElements);
+    } catch (error) {
+      console.error('Error fetching wishlist products:', error);
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchWishlist(0, false);
+  }, [fetchWishlist]);
+
+  const loadMore = () => {
+    if (!loadingMore && hasMore) {
+      fetchWishlist(currentPage + 1, true);
+    }
+  };
+
+  // Web auto-grid
   useEffect(() => {
     if (!isWeb) return;
     if (gridTouchedRef.current) return;
@@ -58,7 +102,6 @@ export const WishlistScreen = () => {
     if (gridMode !== next) setGridMode(next);
   }, [isWeb, width, gridMode]);
 
-  // Grid preference load/save (mobilde anlamlı, webde de bozmuyor)
   const loadGridPreference = useCallback(async () => {
     try {
       const stored = await AsyncStorage.getItem(GRID_STORAGE_KEY);
@@ -101,10 +144,8 @@ export const WishlistScreen = () => {
     setSelectedItems(new Set());
   };
 
-  const handleCardLongPress = (item: WishlistItem) => {
-    const id = String((item as any)?.id ?? '');
-    if (!id) return;
-
+  const handleCardLongPress = (item: ApiProduct) => {
+    const id = String(item.id);
     setIsSelectionMode(true);
     setSelectedItems(prev => {
       const next = new Set(prev);
@@ -113,45 +154,46 @@ export const WishlistScreen = () => {
     });
   };
 
-  const handleCardPress = (item: WishlistItem) => {
-    const id = String((item as any)?.id ?? '');
-    if (!id) return;
-
+  const handleCardPress = (item: ApiProduct) => {
+    const id = String(item.id);
     if (isSelectionMode) {
       setSelectedItems(prev => {
         const next = new Set(prev);
         if (next.has(id)) next.delete(id);
         else next.add(id);
-
         if (next.size === 0) setIsSelectionMode(false);
         return next;
       });
       return;
     }
-
-    navigation.navigate('ProductDetails', { productId: (item as any)?.id });
+    navigation.navigate('ProductDetails', { productId: id });
   };
 
-  const handleRemoveSelected = () => {
-    requestAnimationFrame(() => {
-      selectedItems.forEach(id => removeFromWishlist(id));
-      handleCancelSelection();
-    });
+  const handleRemoveSelected = async () => {
+    for (const id of selectedItems) {
+      await removeFromWishlist(id);
+    }
+    handleCancelSelection();
+    fetchWishlist(0, false); // Refresh list
+  };
+
+  const handleRemoveSingle = async (id: string) => {
+    await removeFromWishlist(id);
+    setPagedWishlist(prev => prev.filter(item => String(item.id) !== id));
+    setTotalItems(prev => prev - 1);
   };
 
   const stats = useMemo(() => {
-    const itemCount = wishlist.length;
-    const totalPrice = wishlist.reduce((sum, item: any) => sum + (Number(item?.price) || 0), 0);
-    const avgRating = wishlist.length > 0
-      ? wishlist.reduce((sum, item: any) => sum + (Number(item?.averageRating) || 0), 0) / wishlist.length
+    const totalPrice = pagedWishlist.reduce((sum, item) => sum + (item.price || 0), 0);
+    const avgRating = pagedWishlist.length > 0
+      ? pagedWishlist.reduce((sum, item) => sum + (item.averageRating || 0), 0) / pagedWishlist.length
       : 0;
-    return { itemCount, totalPrice, avgRating };
-  }, [wishlist]);
+    return { itemCount: totalItems, totalPrice, avgRating };
+  }, [pagedWishlist, totalItems]);
 
-  const renderWishlistItem = ({ item, index }: { item: WishlistItem; index: number }) => {
-    const id = String((item as any)?.id ?? '');
+  const renderWishlistItem = ({ item, index }: { item: ApiProduct; index: number }) => {
+    const id = String(item.id);
     const selected = selectedItems.has(id);
-
     const isGrid = numColumns > 1;
     const gapSize = Spacing.sm;
 
@@ -172,16 +214,15 @@ export const WishlistScreen = () => {
             marginBottom: Spacing.sm,
           },
         ]}
-        collapsable={false}
       >
         <SelectableWishlistCard
-          item={item}
+          item={item as any}
           numColumns={numColumns}
           isSelectionMode={isSelectionMode}
           isSelected={selected}
-          onPress={handleCardPress}
-          onLongPress={handleCardLongPress}
-          onRemove={(id) => removeFromWishlist(id)}
+          onPress={() => handleCardPress(item)}
+          onLongPress={() => handleCardLongPress(item)}
+          onRemove={handleRemoveSingle}
         />
       </View>
     );
@@ -207,13 +248,6 @@ export const WishlistScreen = () => {
       </TouchableOpacity>
     </View>
   );
-
-  const newToWishlistCount = useMemo(() => {
-    // Bu ekran Wishlist ekranı olduğu için seçilen her şey zaten favoridedir.
-    // Ancak mantığı korumak adına 0 döndürebiliriz veya farklı bir yaklaşım izleyebiliriz.
-    // Kullanıcı wishlistten kaldırmak istediği için buradaki buton 'Remove' butonu.
-    return selectedItems.size;
-  }, [selectedItems]);
 
   return (
     <ScreenWrapper>
@@ -276,7 +310,11 @@ export const WishlistScreen = () => {
                     isWeb && styles.headerButtonWeb,
                     { backgroundColor: colors.secondary },
                   ]}
-                  onPress={() => clearWishlist()}
+                  onPress={async () => {
+                    await clearWishlist();
+                    setPagedWishlist([]);
+                    setTotalItems(0);
+                  }}
                   activeOpacity={0.85}
                 >
                   <Ionicons name="trash-outline" size={headerIconSizeBig} color={colors.foreground} />
@@ -285,7 +323,7 @@ export const WishlistScreen = () => {
             </View>
 
             {/* Stats */}
-            {wishlist.length > 0 && (
+            {totalItems > 0 && (
               <View style={[styles.statsSection, { backgroundColor: colors.secondary }, isWeb && styles.statsSectionWeb]}>
                 <View style={styles.statsRow}>
                   <View style={styles.statItem}>
@@ -325,19 +363,19 @@ export const WishlistScreen = () => {
           </View>
 
           {/* Content */}
-          {wishlist === undefined ? (
+          {loading ? (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="large" color={colors.primary} />
               <Text style={[styles.loadingText, { color: colors.mutedForeground }]}>Loading wishlist...</Text>
             </View>
-          ) : wishlist.length === 0 ? (
+          ) : pagedWishlist.length === 0 ? (
             emptyState
           ) : (
             <FlatList
-              data={wishlist}
+              data={pagedWishlist}
               key={numColumns}
               numColumns={numColumns}
-              keyExtractor={(item: any) => String(item?.id ?? '')}
+              keyExtractor={(item) => String(item.id)}
               renderItem={renderWishlistItem}
               removeClippedSubviews={false}
               showsVerticalScrollIndicator={false}
@@ -351,7 +389,15 @@ export const WishlistScreen = () => {
               columnWrapperStyle={
                 numColumns > 1 ? styles.columnWrapper : undefined
               }
-
+              ListFooterComponent={
+                <LoadMoreCard
+                  onPress={loadMore}
+                  loading={loadingMore}
+                  hasMore={hasMore}
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                />
+              }
             />
           )}
 
@@ -377,7 +423,6 @@ export const WishlistScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  // ✅ Web container (full width + split view)
   webPageContainer: {
     width: '100%',
     maxWidth: 1200,
@@ -395,7 +440,7 @@ const styles = StyleSheet.create({
   },
 
   headerWeb: {
-    paddingHorizontal: 0, // webPageContainer handles padding
+    paddingHorizontal: 0,
   },
 
   brand: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
@@ -478,7 +523,6 @@ const styles = StyleSheet.create({
   },
 
   gridItemWrapper: {
-    // Styles applied inline in renderItem
   },
 
   listItemWrapper: {

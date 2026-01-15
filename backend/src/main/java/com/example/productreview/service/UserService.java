@@ -1,11 +1,15 @@
 package com.example.productreview.service;
 
+import com.example.productreview.dto.ProductDTO;
 import com.example.productreview.model.AppNotification;
 import com.example.productreview.model.WishlistItem;
 import com.example.productreview.repository.NotificationRepository;
+import com.example.productreview.repository.ProductRepository;
 import com.example.productreview.repository.WishlistRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,10 +23,14 @@ public class UserService {
 
     private final WishlistRepository wishlistRepository;
     private final NotificationRepository notificationRepository;
+    private final ProductRepository productRepository; // ✨ Added ProductRepository
 
-    public UserService(WishlistRepository wishlistRepository, NotificationRepository notificationRepository) {
+    public UserService(WishlistRepository wishlistRepository, 
+                       NotificationRepository notificationRepository,
+                       ProductRepository productRepository) {
         this.wishlistRepository = wishlistRepository;
         this.notificationRepository = notificationRepository;
+        this.productRepository = productRepository;
     }
 
     // --- Wishlist ---
@@ -31,6 +39,24 @@ public class UserService {
         return wishlistRepository.findByUserId(userId).stream()
                 .map(WishlistItem::getProductId)
                 .collect(Collectors.toList());
+    }
+
+    // ✨ New method for paged wishlist products
+    public Page<ProductDTO> getWishlistProducts(String userId, Pageable pageable) {
+        List<Long> productIds = getWishlist(userId);
+        return productRepository.findByIdIn(productIds, pageable)
+                .map(p -> new ProductDTO(
+                        p.getId(),
+                        p.getName(),
+                        p.getDescription(),
+                        p.getCategories(),
+                        p.getPrice(),
+                        p.getImageUrl(),
+                        p.getAverageRating(),
+                        p.getReviewCount(),
+                        null,
+                        null
+                ));
     }
 
     @Transactional
@@ -73,7 +99,6 @@ public class UserService {
         notificationRepository.save(new AppNotification(userId, title, message, productId));
     }
     
-    // ✨ Added Transactional and Logging
     @Transactional
     public void deleteNotification(Long notificationId) {
         log.info("Deleting notification with ID: {}", notificationId);

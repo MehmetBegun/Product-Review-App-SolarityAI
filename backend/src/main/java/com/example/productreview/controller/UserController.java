@@ -1,7 +1,12 @@
 package com.example.productreview.controller;
 
+import com.example.productreview.dto.ProductDTO;
 import com.example.productreview.model.AppNotification;
 import com.example.productreview.service.UserService;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -24,6 +29,23 @@ public class UserController {
     @GetMapping("/wishlist")
     public ResponseEntity<List<Long>> getWishlist(@RequestHeader("X-User-ID") String userId) {
         return ResponseEntity.ok(userService.getWishlist(userId));
+    }
+
+    // ✨ New endpoint for paged wishlist products
+    @GetMapping("/wishlist/products")
+    public ResponseEntity<Page<ProductDTO>> getWishlistProducts(
+            @RequestHeader("X-User-ID") String userId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "id,desc") String sort) {
+        
+        String[] sortParams = sort.split(",");
+        Sort.Direction direction = sortParams.length > 1 && sortParams[1].equalsIgnoreCase("desc") 
+                ? Sort.Direction.DESC : Sort.Direction.ASC;
+        
+        Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortParams[0]));
+        
+        return ResponseEntity.ok(userService.getWishlistProducts(userId, pageable));
     }
 
     @PostMapping("/wishlist/{productId}")
@@ -71,7 +93,6 @@ public class UserController {
         return ResponseEntity.ok().build();
     }
     
-    // ✨ New Delete Endpoints
     @DeleteMapping("/notifications/{id}")
     public ResponseEntity<Void> deleteNotification(@PathVariable Long id) {
         userService.deleteNotification(id);
